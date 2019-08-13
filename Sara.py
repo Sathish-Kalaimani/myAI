@@ -8,6 +8,7 @@ import wikipedia
 import os
 import glob
 from weather import Weather, Unit
+from Notifier import notify
 
 engine = pyttsx3.init("sapi5")
 voices = engine.getProperty("voices")
@@ -25,7 +26,7 @@ def wishMe():
         speak("Good Afternoon")
     else:
         speak("Good Evening")
-    speak("I am Siri, how may I help you today")
+    speak("I am Sara, how may I help you today")
 
 
 def searchYoutube(video):
@@ -85,53 +86,74 @@ def speakList(lists):
     for item in lists:
         speak(item)
 
+
 def readUserCommand():
-    r = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        #r.pause_threshold = 1
-        audio = r.listen(source)
-            
+    query=""
     try:
-        print("Recognizing")
-        query = r.recognize_google(audio,language="en-in")
-        print("User: "+query)
-    except Exception as e:
-        print(e)
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            print("Listening...")
+            r.adjust_for_ambient_noise(source)
+            #r.pause_threshold = 1
+            audio = r.listen(source,timeout=10)
+    
+    
+            print("Recognizing")
+            query = r.recognize_google(audio,language="en-in")
+            print("User: "+query)
+
+    except (sr.WaitTimeoutError,sr.UnknownValueError):
+        print("No input")
+        
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
         speak("I am unable to connect to the internet.")
-        return "None"
+        
     return query
 
-if __name__ == "__main__":
-    wishMe()
-    command = readUserCommand().lower()
+def processCommands(audio):
+    
+    if "who are you" in audio:
+        speak("I am Sara, your personal assistant")
+    
+    elif "hi" in audio:
+        speak("Hello Sir!!!")
 
-    if "who are you" in command:
-        speak("I am Siri, your personal assistant")
-
-    elif "time" in command:
+    elif "time" in audio:
         strTime = datetime.datetime.now().strftime("%H:%M:%S")
         speak("The time is "+strTime)
         
-    elif "open youtube" in command:
+    elif "open youtube" in audio:
         speak("Opening Youtube")
         webbrowser.open("youtube.com")
 
-    elif "play" in command or "on youtube" in command:
-        if "on youtube" in command:
-            searchYoutube(command)
+    elif "play" in audio or "on youtube" in audio:
+        if "on youtube" in audio:
+            searchYoutube(audio)
         else:
-            name = command.split("play")[1].strip()
+            name = audio.split("play")[1].strip()
             playSongFromLocal(name)
 
-    elif "who" in command or "what" in command:
-        checkWiki(command)
+    elif "who" in audio or "what" in audio:
+        checkWiki(audio)
     
-    elif "the laptop" in command or "the system" in command:
-        if "shutdown" in command or "turn off" in command:
+    elif "the laptop" in audio or "the system" in audio:
+        if "shutdown" in audio or "turn off" in audio:
+            speak("Turning off the laptop")
             os.system("shutdown /s /t 1")
-        elif "restart" in command or "reboot" in command:
+        elif "restart" in audio or "reboot" in audio:
             os.system("shutdown /r /t 1")
         
+
+
+if __name__ == "__main__":
+    #notify("Header","Body")
+    wishMe()
+    command = readUserCommand().lower()
+
+    if "none" in command:
+        command = readUserCommand().lower()
+        processCommands(command)
     else:
-        speak("Hmmmm.. I missed what you said. Could you please repeat?")
+        processCommands(command)
+        
