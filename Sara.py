@@ -6,9 +6,11 @@ import urllib
 import re
 import wikipedia
 import os
+import pathlib
 import glob
 from weather import Weather, Unit
 from Notifier import notify
+from Railway import getLiveStatus, getTrainName
 
 engine = pyttsx3.init("sapi5")
 voices = engine.getProperty("voices")
@@ -19,15 +21,35 @@ def speak(audio):
     engine.runAndWait()
 
 def wishMe():
+    
+    filepath = pathlib.Path("test.txt")
+    
+    
+    if filepath.exists():
+        milliSec = os.path.getctime(os.getcwd()+"/test.txt")
+        createDtStr = datetime.datetime.fromtimestamp(milliSec).strftime("%Y-%m-%d")
+        createdDt = datetime.datetime.strptime(createDtStr,"%Y-%m-%d")
+
+        if createdDt.date() == datetime.date.today():
+            speak(getHour()+". Welcome Back Sir")
+        else:
+            os.remove(os.getcwd()+"/test.txt")
+            speak(getHour()+"Sir")
+    else:
+        temp_file = open(os.getcwd()+"/test.txt","w")
+        temp_file.close()
+        speak(getHour()+"Sir")
+
+def getHour():
+    
     hour = int(datetime.datetime.now().hour)
     if hour >=0 and hour < 12:
-        speak("Good Morning")
+        return "Good Morning"
     elif hour >=12 and hour < 18:
-        speak("Good Afternoon")
+        return "Good Afternoon"
     else:
-        speak("Good Evening")
-    speak("I am Sara, how may I help you today")
-
+        return "Good Evening"
+    
 
 def searchYoutube(video):
     searchText = video.split("play")[1].split(" on")[0].strip()
@@ -81,6 +103,12 @@ def playSongFromLocal(songName):
         #speakList(songList)
     #else:
     #    os.startfile(os.path.join(music_dir,songList[0]))
+
+def calculate(audio,method):
+    num1 = int(audio.split("calculate")[1].split()[0].strip())
+    num2 = int(audio.split(method)[1].strip())
+
+    speak("The {} of {} and {} is {}".format(method,num1, num2,num1+num2))
 
 def speakList(lists):
     for item in lists:
@@ -143,12 +171,30 @@ def processCommands(audio):
             os.system("shutdown /s /t 1")
         elif "restart" in audio or "reboot" in audio:
             os.system("shutdown /r /t 1")
+    
+    elif "calculate" in audio:
+        if "into" in audio or "multiply":
+            calculate(audio,"multiply")
         
+    elif "live status" in audio:
+            #trainNo = re .sub("[^0-9]+","",audio)
+            #print(trainNo)
+            trainName = audio.split("of")[1].split("from")[0].strip()
+            source = audio.split("from")[1].strip()
+            trainNo = getTrainName(trainName,source)
+            status = getLiveStatus(trainNo)
 
+            if "None" in status:
+                speak("Sorry, I couldn't find any status for the train number "+trainNo)
+            else:
+                speak("The train is at {}".format(status))
 
 if __name__ == "__main__":
     #notify("Header","Body")
+
     wishMe()
+    
+   # while True:
     command = readUserCommand().lower()
 
     if "none" in command:
