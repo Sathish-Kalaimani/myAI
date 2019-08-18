@@ -8,9 +8,11 @@ import wikipedia
 import os
 import pathlib
 import glob
-from weather import Weather, Unit
 from Notifier import notify
+from bs4 import BeautifulSoup as soup
 from Railway import getLiveStatus, getTrainName
+from pyowm import OWM
+import geocoder
 
 engine = pyttsx3.init("sapi5")
 voices = engine.getProperty("voices")
@@ -22,10 +24,9 @@ def speak(audio):
 
 def wishMe():
     
-    filepath = pathlib.Path("test.txt")
-    
-    
-    if filepath.exists():
+    filepath = os.path.exists("test.txt")
+        
+    if filepath:
         milliSec = os.path.getctime(os.getcwd()+"/test.txt")
         createDtStr = datetime.datetime.fromtimestamp(milliSec).strftime("%Y-%m-%d")
         createdDt = datetime.datetime.strptime(createDtStr,"%Y-%m-%d")
@@ -52,7 +53,7 @@ def getHour():
     
 
 def searchYoutube(video):
-    searchText = video.split("play")[1].split(" on")[0].strip()
+    searchText = re.split("play|open",video)[1].split(" on")[0].strip()
     #re.sub("play","",video).replace("on youtube","").strip()
     query = urllib.parse.urlencode({"search_query":searchText})
     html_content = urllib.request.urlopen("http://www.youtube.com/results?"+query)
@@ -61,7 +62,7 @@ def searchYoutube(video):
     webbrowser.open("http://www.youtube.com/watch?v=" + search_results[0])
 
 def checkWiki(query):
-    keyWord = query.split("is"or"are")[1].split()[0].strip()
+    keyWord = query.split("about")[1].split()[0].strip()
     result = wikipedia.summary(keyWord,sentences=2)
     speak("According to Wikipedia "+result)
     
@@ -121,6 +122,7 @@ def readUserCommand():
         r = sr.Recognizer()
         with sr.Microphone() as source:
             print("Listening...")
+            speak("I am Listening")
             r.adjust_for_ambient_noise(source)
             #r.pause_threshold = 1
             audio = r.listen(source,timeout=10)
@@ -151,9 +153,10 @@ def processCommands(audio):
         strTime = datetime.datetime.now().strftime("%H:%M:%S")
         speak("The time is "+strTime)
         
-    elif "open youtube" in audio:
-        speak("Opening Youtube")
-        webbrowser.open("youtube.com")
+    elif "open" in audio:
+        site = re.search("open (.*)",audio)
+        speak("Opening "+site.group(1))
+        webbrowser.open("https://www."+site.group(1))
 
     elif "play" in audio or "on youtube" in audio:
         if "on youtube" in audio:
@@ -162,7 +165,7 @@ def processCommands(audio):
             name = audio.split("play")[1].strip()
             playSongFromLocal(name)
 
-    elif "who" in audio or "what" in audio:
+    elif "information" in audio or "wikipedia" in audio:
         checkWiki(audio)
     
     elif "the laptop" in audio or "the system" in audio:
@@ -170,6 +173,7 @@ def processCommands(audio):
             speak("Turning off the laptop")
             os.system("shutdown /s /t 1")
         elif "restart" in audio or "reboot" in audio:
+            speak("Rebooting the system")
             os.system("shutdown /r /t 1")
     
     elif "calculate" in audio:
@@ -188,18 +192,56 @@ def processCommands(audio):
                 speak("Sorry, I couldn't find any status for the train number "+trainNo)
             else:
                 speak("The train is at {}".format(status))
+    
+    elif "headlines" in audio or "news" in audio:
+        try:
+            newsUrl = "https://timesofindia.indiatimes.com/rssfeedstopstories.cms"
+            client = urllib.request.urlopen(newsUrl)
+            xmlPage = client.read()
+            client.close()
+            soupPage = soup(xmlPage,"html.parser")
+            newsList = soupPage.find_all("item")
+            for news in newsList[:15]:
+                speak(news.title.text)
+        except Exception as e:
+            speak("Sorry Sir, I am unable to read the news at the moment")
+    
+    elif "weather" in audio or "climate":
+        try:
+            g = geocoder.ip('me')
+            owm = OWM(API_key='ab0d5e80e8dafb2cb81fa9e82431c1fa')
+            obs = owm.weather_at_place(g.city)
+            w = obs.get_weather()
+            k = w.get_status()
+            x = w.get_temperature(unit ='celsius')
+        
+            speak("Current weather in "+g.city+" is "+k+". The maximum temperature is "+str(x["temp_max"])+" and the minimum temperature"
+            +"is "+str(x["temp_min"]))
+        except Exception as e:
+            print(e)
+            speak("Hmmmmm. Cannot get the weather details for the city")
 
-if __name__ == "__main__":
+def assistant():
+    try:
+        command = readUserCommand().lower()
+
+        if "none" in command:
+            command = readUserCommand().lower()
+            processCommands(command)
+        else:
+            processCommands(command)
+    except Exception:
+        speak("I am facing some technical glitch right now. Please try again")
+
+def textToAssistant(command):
+    processCommands(command)
+
+
+#if __name__ == "__main__":
     #notify("Header","Body")
 
-    wishMe()
+#    wishMe()
     
    # while True:
-    command = readUserCommand().lower()
-
-    if "none" in command:
-        command = readUserCommand().lower()
-        processCommands(command)
-    else:
-        processCommands(command)
+   
         

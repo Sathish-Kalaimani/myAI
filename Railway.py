@@ -1,6 +1,8 @@
 import requests, json
 import datetime, time
 import re
+import urllib
+from bs4 import BeautifulSoup as soup
 
 
 
@@ -48,3 +50,9 @@ def getTrainName(trainName,source):
 #if __name__ == "__main__":    
 #     trainNo = getTrainName("Brindavan Express","Bangalore")
 #      getLiveStatus(trainNo)
+
+        # config = configparser.RawConfigParser()
+        # config.read("app.cfg")
+        # print(config.get("rssFeeds","toi"))
+
+      
