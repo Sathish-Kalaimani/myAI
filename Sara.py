@@ -10,9 +10,10 @@ import pathlib
 import glob
 from Notifier import notify
 from bs4 import BeautifulSoup as soup
-from Railway import getLiveStatus, getTrainName
+from Railway import getLiveStatus, getTrainName, getSeatAvailability,getTrainList
 from pyowm import OWM
 import geocoder
+from GasBooking import getDateFromString
 
 engine = pyttsx3.init("sapi5")
 voices = engine.getProperty("voices")
@@ -184,14 +185,17 @@ def processCommands(audio):
             #trainNo = re .sub("[^0-9]+","",audio)
             #print(trainNo)
             trainName = audio.split("of")[1].split("from")[0].strip()
-            source = audio.split("from")[1].strip()
-            trainNo = getTrainName(trainName,source)
-            status = getLiveStatus(trainNo)
+            if trainName.isdigit():
+                status = getLiveStatus(trainName)
+            else:
+                source = audio.split("from")[1].strip()
+                trainNo = getTrainName(trainName,source)
+                status = getLiveStatus(trainNo)
 
             if "None" in status:
                 speak("Sorry, I couldn't find any status for the train number "+trainNo)
             else:
-                speak("The train is at {}".format(status))
+                speak(status)
     
     elif "headlines" in audio or "news" in audio:
         try:
@@ -206,7 +210,7 @@ def processCommands(audio):
         except Exception as e:
             speak("Sorry Sir, I am unable to read the news at the moment")
     
-    elif "weather" in audio or "climate":
+    elif "weather" in audio or "climate" in audio:
         try:
             g = geocoder.ip('me')
             owm = OWM(API_key='ab0d5e80e8dafb2cb81fa9e82431c1fa')
@@ -220,6 +224,21 @@ def processCommands(audio):
         except Exception as e:
             print(e)
             speak("Hmmmmm. Cannot get the weather details for the city")
+    
+    elif "trains" in audio or "check trains" in audio:
+        try:
+            source = audio.split("from")[1].split("to")[0].strip()
+            dest = audio.split("to")[1].split()[0].strip()
+            date = getDateFromString(audio.split("on")[1].strip())
+            print(source+" "+dest+" "+date)
+            trains = getTrainList(source,dest,date)
+            for train in trains:
+                speak(train.split("-")[1]+" departing at "+train.split("-")[2])
+        except Exception as e:
+            print(e)
+    
+    else:
+        print("unknown")
 
 def assistant():
     try:
